@@ -321,7 +321,7 @@
           </div>
           <div id="eq-list" class="eq-list"></div>
           <div class="eq-new">
-            <input id="eq-nome" type="text" maxlength="18" placeholder="Nome da nova equipe">
+            <input id="eq-nome" type="text" maxlength="18" placeholder="Escolha a cor ao lado ou digite o nome da equipe">
             <div id="eq-cores" class="eq-cores"></div>
             <button class="btn-primary eq-add" onclick="criarEquipe()">+ Criar equipe</button>
           </div>
@@ -712,6 +712,10 @@
     var usadas = {};
     GRUPOS.forEach(function(g){ usadas[String(g.cor).toLowerCase()] = 1; });
     if(corSel && usadas[corSel.toLowerCase()]) corSel = null;
+    // so redesenha quando muda de verdade: evita perder clique durante o poll
+    var sigp = Object.keys(usadas).sort().join(',') + '#' + (corSel||'');
+    if(box.getAttribute('data-sigp') === sigp) return;
+    box.setAttribute('data-sigp', sigp);
     box.innerHTML = PALETA.map(function(p){
       var usada = !!usadas[p.cor.toLowerCase()];
       return '<button class="sw'+(usada?' used':'')+((corSel===p.cor)?' sel':'')+'" '+
@@ -719,7 +723,23 @@
         'title="'+p.nome+(usada?' (em uso)':'')+'" onclick="pickCor(\''+p.cor+'\')"></button>';
     }).join('');
   }
-  window.pickCor = function(c){ corSel = c; renderPaleta(); };
+  // Clicar na cor ja sugere o nome da equipe (o nome da cor).
+  // Se a pessoa digitou um nome proprio, o nome dela e preservado.
+  var nomeAuto = '';
+  window.pickCor = function(c){
+    corSel = c;
+    var el = $('eq-nome');
+    if(el){
+      var p = null;
+      PALETA.forEach(function(x){ if(x.cor === c) p = x; });
+      var atual = (el.value||'').trim();
+      if(p && (atual === '' || atual === nomeAuto)){
+        el.value = p.nome;
+        nomeAuto = p.nome;
+      }
+    }
+    renderPaleta();
+  };
 
   window.criarEquipe = async function(){
     var el = $('eq-nome'); if(!el) return;
@@ -730,7 +750,7 @@
     try {
       var res = await SB.rpc('gamificacao_grupo_criar', {p_nome:nome, p_cor:corSel, p_pin:pin()});
       if(res.error) throw res.error;
-      el.value = ''; corSel = null;
+      el.value = ''; corSel = null; nomeAuto = '';
       toast('Equipe ' + nome + ' criada', 'ok');
       await fetchState(); await fetchLog();
     } catch(e){
