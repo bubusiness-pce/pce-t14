@@ -269,6 +269,11 @@
   main{position:relative;z-index:1}
   /* linhas do placar levemente translúcidas para o leão atravessar */
   .team-row{background:linear-gradient(90deg,rgba(21,34,60,.74),rgba(19,28,47,.74))}
+
+  /* ---------- Projeção: escala com a tela (1080p = 1x, 4K = 2x) ---------- */
+  body.fs main,body.fs header.top{zoom:var(--fs-zoom,1)}
+  body.fs .reveal-idle{min-height:calc(56vh / var(--fs-zoom,1))}
+  body.fs .reveal-stage{min-height:calc(62vh / var(--fs-zoom,1))}
 </style>
 </head>
 <body>
@@ -489,10 +494,17 @@
     });
     computeRowH();
   }
+  // escala da projeção: 1x até 1920px de largura, 2x em 4K, no máximo 3x
+  function fsScale(){
+    var z = document.body.classList.contains('fs') ? Math.max(1, Math.min(3, window.innerWidth / 1920)) : 1;
+    document.documentElement.style.setProperty('--fs-zoom', z);
+    return z;
+  }
   function computeRowH(){
+    var z = fsScale();
     var n = Math.max(1, GRUPOS.length);
     // espaco util da area do placar, dividido pelo numero de equipes
-    var disp = Math.max(280, window.innerHeight - (document.body.classList.contains('fs') ? 150 : 300));
+    var disp = Math.max(280, window.innerHeight / z - (document.body.classList.contains('fs') ? 150 : 300));
     ROW_H = Math.round((disp - GAP*(n-1)) / n);
     ROW_H = Math.max(52, Math.min(150, ROW_H));
     $('ranking').style.height = (ROW_H*n + GAP*(n-1)) + 'px';
