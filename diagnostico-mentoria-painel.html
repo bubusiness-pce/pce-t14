@@ -849,6 +849,37 @@ main { padding-top: 24px; padding-bottom: calc(64px + env(safe-area-inset-bottom
 }
 .nota strong { color: var(--v3-gold); font-weight: 600; }
 
+/* Aba Perguntas: QR code e telão */
+.qr-bloco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+  padding: 20px;
+  border: 1px solid var(--v3-line);
+  border-radius: 12px;
+  background: var(--v3-surface);
+}
+.qr-figura { display: flex; justify-content: center; }
+.qr-figura canvas { display: block; border-radius: 8px; box-shadow: 0 0 0 1px rgba(217, 184, 114, 0.6); }
+.qr-info { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qr-tit {
+  margin: 0;
+  font-family: "EB Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  line-height: 1.15;
+  color: var(--v3-ivory);
+}
+.qr-grupo { display: flex; flex-direction: column; gap: 8px; }
+.qr-grupo .rotulo-campo { margin: 0; font-size: 13px; }
+.acoes-qr { display: flex; flex-wrap: wrap; gap: 10px; }
+.acoes-qr .v3-btn, .acoes-qr .botao-sec { min-height: 52px; }
+@media (max-width: 639px) { .acoes-qr > * { width: 100%; } }
+@media (min-width: 900px) {
+  .qr-bloco { grid-template-columns: 260px minmax(0, 1fr); gap: 32px; padding: 24px; align-items: start; }
+}
+html.com-telao, html.com-telao body { overflow: hidden; }
 /* Produção: espera, atualizar, aviso, lista vazia, excluir */
 .link-card {
   display: flex;
@@ -1091,7 +1122,41 @@ main { padding-top: 24px; padding-bottom: calc(64px + env(safe-area-inset-bottom
     </div>
   </section>
 
-  <section id="vista-perguntas" class="perguntas" hidden aria-label="Perguntas"></section>
+  <section id="vista-perguntas" class="perguntas" hidden aria-label="Perguntas">
+    <section class="qr-bloco" aria-labelledby="qr-tit">
+      <div class="qr-figura">
+        <canvas id="qr-canvas" role="img" aria-label="QR code do link do aluno, com o leão do Mentor de Líderes no centro"></canvas>
+      </div>
+      <div class="qr-info">
+        <h2 class="qr-tit" id="qr-tit">QR code e telão</h2>
+        <div class="qr-grupo">
+          <p class="rotulo-campo">Link do aluno</p>
+          <div class="link-linha">
+            <code class="link-txt" id="qr-link-txt"></code>
+            <button type="button" class="botao-sec botao-link" id="btn-qr-copiar">Copiar link</button>
+          </div>
+        </div>
+        <div class="acoes-qr">
+          <button type="button" class="v3-btn v3-spotlight" id="btn-telao">Abrir no telão em tela cheia</button>
+          <button type="button" class="botao-sec" id="btn-qr-baixar">Baixar QR code</button>
+        </div>
+        <p class="aviso aviso-ok" id="qr-aviso" role="status" hidden></p>
+        <div class="qr-grupo">
+          <p class="rotulo-campo">Página do telão</p>
+          <div class="link-linha">
+            <code class="link-txt" id="telao-link-txt"></code>
+            <button type="button" class="botao-sec botao-link" id="btn-telao-copiar">Copiar link do telão</button>
+          </div>
+          <p class="v3-hint">Use este link no computador do telão.</p>
+        </div>
+        <div class="copia" id="qr-copia" hidden>
+          <p class="v3-hint">O navegador não deixou copiar sozinho. Selecione o link abaixo e copie.</p>
+          <textarea class="copia-txt" id="qr-copia-txt" rows="3" readonly aria-label="Link para copiar"></textarea>
+        </div>
+      </div>
+    </section>
+    <div id="perguntas-conteudo"></div>
+  </section>
 
   <section id="vista-ficha" class="conteudo" hidden aria-label="Ficha do aluno">
     <button type="button" class="v3-back voltar" data-acao="voltar"><span aria-hidden="true">&larr;</span> Voltar para a lista</button>
@@ -1100,7 +1165,11 @@ main { padding-top: 24px; padding-bottom: calc(64px + env(safe-area-inset-bottom
   </section>
 </main>
 
+<div id="telao-area" hidden aria-label="Telão"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="diagnostico-mentoria-qr.js"></script>
 <script src="diagnostico-mentoria-motor.js"></script>
 <script>
 'use strict';
@@ -1716,7 +1785,7 @@ function desenharPerguntas() {
       .map(function (id) { return cartaoPergunta(id, numComum(id)); }).join('') + '</div>';
   };
 
-  $('vista-perguntas').innerHTML =
+  $('perguntas-conteudo').innerHTML =
     '<div class="perg-abertura"><p class="v3-eyebrow">Perguntas do formulário</p>' +
     '<p class="v3-lead">As 15 perguntas, na ordem em que o aluno vê. Depois da primeira, o caminho se divide em dois.</p>' +
     '<p class="v3-context">Antes delas, uma tela pede nome completo, <span class="junto">e-mail</span> e WhatsApp.</p>' +
@@ -1872,7 +1941,8 @@ function atualizarLista() {
 /* ---------- link do aluno: sempre o mesmo ---------- */
 function paginaIrma(nome, consulta) {
   const arq = nome + '.html';   // com .html, igual ao link que o Carlos já distribuiu
-  try { return new URL(arq + (consulta || ''), location.href).href; }
+  // gancho de teste (só do disco): ?base= troca o endereço-base, para provar o QR com o link de produção
+  try { return new URL(arq + (consulta || ''), (TESTE && PARAMS.get('base')) || location.href).href; }
   catch (e) { return arq + (consulta || ''); }
 }
 const LINK_ALUNO = paginaIrma('diagnostico-mentoria', '?t=fop');
@@ -1915,6 +1985,91 @@ function copiarContato(btn) {
     try { const r = document.createRange(); r.selectNodeContents(alvo); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* nada */ }
   });
 }
+
+/* ---------- QR code e telão (aba Perguntas, sem PIN) ---------- */
+const TELAO_LINK = paginaIrma('diagnostico-mentoria-telao');
+const temQR = function () { return !!(window.DEM_QR && window.QRCode); };
+
+function avisoQR(texto, ok) {
+  const el = $('qr-aviso');
+  clearTimeout(el._tempo);
+  el.textContent = texto;
+  el.className = 'aviso' + (ok ? ' aviso-ok' : '');
+  el.hidden = !texto;
+  if (texto && ok) el._tempo = setTimeout(function () { el.hidden = true; }, 6000);
+}
+function desenharQRPequeno() {
+  if (!temQR()) { avisoQR('O QR code não carregou. Confira a internet e recarregue a página.'); return; }
+  DEM_QR.pronto().then(function () {
+    try {
+      const lado = window.matchMedia('(min-width: 900px)').matches ? 240 : 220;
+      DEM_QR.desenharNaTela($('qr-canvas'), LINK_ALUNO, lado);
+    } catch (e) { avisoQR(e.message); }
+  });
+}
+function copiarParaQR(txt, btn, volta) {
+  const caixa = $('qr-copia'), ta = $('qr-copia-txt');
+  copiarTexto(txt, function () { caixa.hidden = true; marcarCopiado(btn, volta === 'Copiar link' ? 'Link copiado' : 'Link do telão copiado', volta); }, function () {
+    caixa.hidden = false; ta.value = txt;
+    try { ta.focus(); ta.select(); } catch (e) { /* nada */ }
+  });
+}
+function baixarQR() {
+  if (!temQR()) { avisoQR('O QR code não carregou. Confira a internet e recarregue a página.'); return; }
+  DEM_QR.pronto().then(function () { return DEM_QR.baixarPNG(LINK_ALUNO, 'dem-qrcode.png'); })
+    .then(function () { avisoQR('QR code baixado.', true); }, function (e) { avisoQR((e && e.message) || 'Não conseguimos gerar o QR code.'); });
+}
+
+const telao = { cheia: false };
+function emTelaCheia() { return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement); }
+function telaoNaJanela() {
+  const b = document.querySelector('#telao-area .dem-telao-sair');
+  if (b) { b.hidden = false; b.focus(); }
+}
+function abrirTelao() {
+  if (!temQR()) { avisoQR('O QR code não carregou. Confira a internet e recarregue a página.'); return; }
+  const area = $('telao-area');
+  DEM_QR.montarTelao(area, LINK_ALUNO, { sair: 'Sair do telão' });
+  area.hidden = false;
+  document.documentElement.classList.add('com-telao');
+  DEM_QR.ajustarTelao(area, LINK_ALUNO);
+  const pedir = area.requestFullscreen || area.webkitRequestFullscreen || area.msRequestFullscreen;
+  if (!pedir) { telaoNaJanela(); return; }
+  try {
+    const r = pedir.call(area);
+    if (r && r.then) r.then(null, telaoNaJanela);
+  } catch (e) { telaoNaJanela(); }
+}
+function fecharTelao() {
+  const area = $('telao-area');
+  if (area.hidden) return;
+  telao.cheia = false;
+  if (emTelaCheia()) {
+    const sair = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    try { const r = sair && sair.call(document); if (r && r.catch) r.catch(function () { /* nada */ }); } catch (e) { /* nada */ }
+  }
+  area.hidden = true;
+  area.innerHTML = '';
+  document.documentElement.classList.remove('com-telao');
+  $('btn-telao').focus();
+}
+['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'].forEach(function (ev) {
+  document.addEventListener(ev, function () {
+    const area = $('telao-area');
+    if (emTelaCheia()) { telao.cheia = true; setTimeout(function () { DEM_QR.ajustarTelao(area, LINK_ALUNO); }, 80); }
+    else if (telao.cheia) fecharTelao();          // Esc saiu da tela cheia: volta ao painel
+  });
+});
+$('telao-area').addEventListener('click', function (e) { if (e.target.closest('.dem-telao-sair')) fecharTelao(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('telao-area').hidden && !emTelaCheia()) fecharTelao(); });
+window.addEventListener('resize', function () {
+  const area = $('telao-area');
+  if (!area.hidden && window.DEM_QR) { clearTimeout(telao.redim); telao.redim = setTimeout(function () { DEM_QR.ajustarTelao(area, LINK_ALUNO); }, 120); }
+});
+$('btn-telao').addEventListener('click', abrirTelao);
+$('btn-qr-baixar').addEventListener('click', baixarQR);
+$('btn-qr-copiar').addEventListener('click', function () { copiarParaQR(LINK_ALUNO, this, 'Copiar link'); });
+$('btn-telao-copiar').addEventListener('click', function () { copiarParaQR(TELAO_LINK, this, 'Copiar link do telão'); });
 
 /* ---------- brilho e onda ---------- */
 document.addEventListener('mousemove', function (e) {
@@ -1992,6 +2147,9 @@ function iniciar() {
   if (MODO === 'validacao') $('faixa').hidden = false;
   $('link-txt').textContent = LINK_ALUNO;
   desenharPerguntas();
+  $('qr-link-txt').textContent = LINK_ALUNO;
+  $('telao-link-txt').textContent = TELAO_LINK;
+  desenharQRPequeno();
   estado.filtro = filtrosGuardados();
   try { ['dnm_dia_filtro_v1', 'dnm_evento_filtro_v1', 'dnm_eventos_criados_v1'].forEach(function (k) { sessionStorage.removeItem(k); }); } catch (e) { /* nada */ }
 
