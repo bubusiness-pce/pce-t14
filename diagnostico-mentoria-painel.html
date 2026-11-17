@@ -826,27 +826,8 @@ main { padding-top: 24px; padding-bottom: calc(64px + env(safe-area-inset-bottom
   background: var(--v3-surface);
 }
 .link-tit { margin: 0 0 2px; font-size: 14px; font-weight: 600; color: var(--v3-ivory); }
-details.link-card { padding: 0; }
-details.link-card > summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 0 14px;
-  margin: 0;
-  cursor: pointer;
-  border-radius: 12px;
-}
-details.link-card > summary::-webkit-details-marker { display: none; }
-details.link-card > summary::after { content: "+"; font-size: 20px; font-weight: 400; color: var(--v3-gold); line-height: 1; }
-details.link-card[open] > summary::after { content: "\2212"; }
-details.link-card > summary:focus-visible { outline: 2px solid var(--v3-gold); outline-offset: 2px; }
-.evento-corpo { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 14px; }
-.evento-pronto { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--v3-line); }
-.evento-slug { color: var(--v3-ivory); font-weight: 600; overflow-wrap: anywhere; }
-.evento-filtro { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.evento-filtro .rotulo-campo { margin-bottom: 0; font-size: 13px; }
+.dia-filtro { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.dia-filtro .rotulo-campo { margin-bottom: 0; font-size: 13px; }
 .campo-select {
   height: 48px;
   font-size: 16px;
@@ -874,7 +855,6 @@ details.link-card > summary:focus-visible { outline: 2px solid var(--v3-gold); o
 .grupo-cab:not(:first-child) { margin-top: 8px; border-top: 1px solid var(--v3-line); padding-top: 14px; }
 .grupo-nome { overflow-wrap: anywhere; min-width: 0; }
 .grupo-n { color: var(--v3-muted); font-variant-numeric: tabular-nums; }
-.evento-dica { margin-top: 10px; }
 
 .link-card .rotulo-campo { margin-bottom: 0; font-size: 13px; }
 .opcional { color: var(--v3-muted-2); font-weight: 400; }
@@ -1047,32 +1027,23 @@ details.link-card > summary:focus-visible { outline: 2px solid var(--v3-gold); o
 
   <section id="vista-fichas" class="painel" hidden aria-label="Fichas">
     <aside class="lateral" aria-label="Lista de fichas">
-      <details class="link-card" id="novo-evento">
-        <summary class="link-tit">Novo evento</summary>
-        <div class="evento-corpo">
-          <p class="v3-hint">Crie o link de cada evento ou turma. As respostas que chegarem por ele ficam juntas.</p>
-          <label class="rotulo-campo" for="evento-nome">Nome do evento ou da turma</label>
-          <input class="v3-input campo-turma" id="evento-nome" type="text" maxlength="60" autocomplete="off" placeholder="FOP novembro">
-          <p class="erro" id="evento-erro" role="alert" hidden></p>
-          <button type="button" class="botao-sec botao-link" id="btn-criar-evento">Criar link do evento</button>
-          <div class="evento-pronto" id="evento-pronto" hidden>
-            <p class="v3-hint">Link do evento <b class="evento-slug" id="evento-slug"></b></p>
-            <code class="link-txt" id="link-txt"></code>
-            <button type="button" class="botao-sec botao-link" id="btn-link">Copiar link</button>
-            <div class="copia" id="copia" hidden>
-              <p class="v3-hint">O navegador não deixou copiar sozinho. Selecione o link abaixo e copie.</p>
-              <textarea class="copia-txt" id="copia-txt" rows="3" readonly aria-label="Link do evento"></textarea>
-            </div>
-          </div>
+      <div class="link-card" id="link-aluno">
+        <p class="link-tit">Link do aluno</p>
+        <p class="v3-hint">É sempre o mesmo link. As respostas aparecem abaixo, separadas por data.</p>
+        <code class="link-txt" id="link-txt"></code>
+        <button type="button" class="botao-sec botao-link" id="btn-link">Copiar link</button>
+        <div class="copia" id="copia" hidden>
+          <p class="v3-hint">O navegador não deixou copiar sozinho. Selecione o link abaixo e copie.</p>
+          <textarea class="copia-txt" id="copia-txt" rows="3" readonly aria-label="Link do aluno"></textarea>
         </div>
-      </details>
+      </div>
       <div class="lateral-topo">
         <p class="v3-eyebrow">Fichas</p>
         <span class="v3-hint" id="contagem"></span>
       </div>
-      <div class="evento-filtro">
-        <label class="rotulo-campo" for="evento">Evento</label>
-        <select class="v3-input campo-select" id="evento"></select>
+      <div class="dia-filtro">
+        <label class="rotulo-campo" for="dia">Data</label>
+        <select class="v3-input campo-select" id="dia"></select>
       </div>
       <div class="atualizar" id="atualizar" hidden>
         <button type="button" class="botao-sec" id="btn-atualizar">Atualizar lista</button>
@@ -1082,7 +1053,6 @@ details.link-card > summary:focus-visible { outline: 2px solid var(--v3-gold); o
       <p class="aviso" id="lista-aviso" role="alert" hidden></p>
       <ul class="lista" id="lista"></ul>
       <p class="lista-vazia" id="lista-vazia" hidden>Nenhum aluno respondeu ainda.</p>
-      <p class="v3-hint evento-dica" id="evento-dica" hidden>O evento aparece aqui para todo o time quando chegar a primeira resposta.</p>
     </aside>
     <article class="ficha" id="ficha" tabindex="-1"></article>
   </section>
@@ -1172,9 +1142,10 @@ const SIMULADOR = SIMULAR ? (function () {
     let respostas = JSON.parse(JSON.stringify(MOTOR.EXEMPLOS[i % 3].respostas));
     if (SIMULAR === 'incompleta') respostas = i === 0 ? { momento: 3, fat: 1, canais: [0] } : {};
     const d = MOTOR.diagnosticar(respostas, nome) || { caminho: 'nv', etapa: 1, dores: { v: 0, b: 0, t: 0 }, principal: 'v', prioridade: null, sinais: [] };
-    const em = new Date(Date.UTC(2026, 10, 17, 21, 0) - i * 5 * 3600000).toISOString();
+    const minutos = [23 * 60 + 55, 5, 12 * 60, 9 * 60 + 30, 18 * 60, 23 * 60 + 10, 7 * 60, 15 * 60][Math.floor(i / 4) % 8];
+    const em = new Date(Date.UTC(2026, 10, 17 - (i % 4)) + (minutos + 180) * 60000).toISOString();   // Brasília = UTC-3
     linhas.push({
-      id: 100 + i, turma: ['fop-novembro', 'imersao-lideres', 'turma-7', ''][i % 4], nome: nome, email: 'pessoa' + (i + 1) + '@exemplo.com',
+      id: 100 + i, turma: 'fop', nome: nome, email: 'pessoa' + (i + 1) + '@exemplo.com',
       telefone: '(85) 90000-' + String(1000 + i), telefone_norm: '8590000' + String(1000 + i),
       caminho: d.caminho, etapa: d.etapa, dor_vendas: d.dores.v, dor_backoffice: d.dores.b, dor_time: d.dores.t,
       grupo_principal: d.principal, prioridade_declarada: d.prioridade, n_sinais: d.sinais.length,
@@ -1229,8 +1200,7 @@ const estado = {
   entrando: false,
   atualizando: false,
   confirmar: null,      // chave da ficha com a confirmação de excluir aberta
-  evento: '',           // '' = todos · '__sem' = sem evento · nome limpo do evento
-  linkAtual: '',
+  dia: '',              // '' = todas as datas · '__sem' = sem data · AAAA-MM-DD (Brasília)
   excluindo: false
 };
 
@@ -1383,38 +1353,47 @@ function seloOrigem(f) {
   return '';
 }
 
-function eventoDe(f) { return MODO === 'producao' ? (f.turma || '') : ''; }   // na validação tudo fica em "Sem evento"
-function nomeEvento(ev) { return ev || 'Sem evento'; }
+// Dia da resposta no calendário de Brasília (AAAA-MM-DD), a partir do mesmo campo de "Respondida em"
+function diaDe(f) {
+  const t = Date.parse(f.criado);
+  if (!f.criado || isNaN(t)) return '';
+  try { const p = partesBrasilia(new Date(t)); return p.year + '-' + p.month + '-' + p.day; }
+  catch (e) { return ''; }
+}
+function nomeDia(d) {
+  if (!d) return 'Sem data';
+  const x = d.split('-');
+  return x[2] + '/' + x[1] + '/' + x[0];
+}
+function maisNova(a, b) { return (Date.parse(b.criado) || 0) - (Date.parse(a.criado) || 0); }
 
-// Grupos por evento, na ordem da resposta mais recente de cada um
+// Grupos por dia: o dia mais novo primeiro e, dentro do dia, a resposta mais nova primeiro
 function grupos() {
-  const mapa = {}, ordem = [];
+  const mapa = {}, dias = [];
   estado.fichas.forEach(function (f) {
-    const ev = eventoDe(f);
-    if (!mapa[ev]) { mapa[ev] = []; ordem.push(ev); }
-    mapa[ev].push(f);
+    const d = diaDe(f);
+    if (!mapa[d]) { mapa[d] = []; dias.push(d); }
+    mapa[d].push(f);
   });
-  return ordem.map(function (ev) { return { ev: ev, fichas: mapa[ev] }; });
+  dias.sort(function (a, b) { if (!a) return 1; if (!b) return -1; return a < b ? 1 : a > b ? -1 : 0; });
+  return dias.map(function (d) { return { dia: d, fichas: mapa[d].slice().sort(maisNova) }; });
 }
 function visiveis() {
   const g = grupos();
-  if (!estado.evento) return g.reduce(function (a, x) { return a.concat(x.fichas); }, []);
-  const alvo = estado.evento === '__sem' ? '' : estado.evento;
-  const achado = g.filter(function (x) { return x.ev === alvo; })[0];
+  if (!estado.dia) return g.reduce(function (a, x) { return a.concat(x.fichas); }, []);
+  const alvo = estado.dia === '__sem' ? '' : estado.dia;
+  const achado = g.filter(function (x) { return x.dia === alvo; })[0];
   return achado ? achado.fichas : [];
 }
 
 function desenharSeletor() {
-  const g = grupos(), criados = eventosCriados();
-  const ops = [['', 'Todos os eventos · ' + estado.fichas.length]];
-  g.forEach(function (x) { if (x.ev) ops.push([x.ev, x.ev + ' · ' + x.fichas.length]); });
-  criados.forEach(function (ev) { if (!g.some(function (x) { return x.ev === ev; })) ops.push([ev, ev + ' · 0']); });
-  const sem = g.filter(function (x) { return !x.ev; })[0];
-  if (sem) ops.push(['__sem', 'Sem evento · ' + sem.fichas.length]);
-  if (!ops.some(function (o) { return o[0] === estado.evento; })) estado.evento = '';
-  const sel = $('evento');
+  const g = grupos();
+  const ops = [['', 'Todas as datas · ' + estado.fichas.length]];
+  g.forEach(function (x) { ops.push([x.dia || '__sem', nomeDia(x.dia) + ' · ' + x.fichas.length]); });
+  if (!ops.some(function (o) { return o[0] === estado.dia; })) estado.dia = '';
+  const sel = $('dia');
   sel.innerHTML = ops.map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join('');
-  sel.value = estado.evento;
+  sel.value = estado.dia;
 }
 
 function itemLista(f) {
@@ -1444,13 +1423,12 @@ function desenharLista() {
   $('atualizado-em').textContent = producao && estado.atualizadoEm ? 'Atualizada às ' + hora(estado.atualizadoEm) : '';
   $('lista').hidden = n === 0;
   $('lista-vazia').hidden = n !== 0;
-  $('lista-vazia').textContent = estado.fichas.length === 0 && !estado.evento ? 'Nenhum aluno respondeu ainda.' : 'Nenhuma resposta neste evento ainda.';
-  $('evento-dica').hidden = !(n === 0 && estado.evento && estado.evento !== '__sem');
+  $('lista-vazia').textContent = estado.fichas.length === 0 ? 'Nenhum aluno respondeu ainda.' : 'Nenhuma resposta nesta data.';
   $('ficha').hidden = n === 0;
   let html = '';
-  if (!estado.evento) {
+  if (!estado.dia) {
     grupos().forEach(function (g) {
-      html += '<li class="grupo-cab"><span class="grupo-nome">' + esc(nomeEvento(g.ev)) + '</span><span class="grupo-n">' + g.fichas.length + '</span></li>' +
+      html += '<li class="grupo-cab"><span class="grupo-nome">' + esc(nomeDia(g.dia)) + '</span><span class="grupo-n">' + g.fichas.length + '</span></li>' +
         g.fichas.map(itemLista).join('');
     });
   } else {
@@ -1507,7 +1485,6 @@ function cabecalhoFicha(f) {
   if (f.origem === 'exemplo') meta.push('Ficha de exemplo · ' + esc(f.rotulo));
   const data = dataHora(f.criado, false);
   if (data) meta.push('Respondida em ' + esc(data));
-  meta.push(eventoDe(f) ? 'Evento ' + esc(eventoDe(f)) : 'Sem evento');
   return '<header class="ficha-cab">' +
     '<div class="ficha-nome-linha"><h1 class="v3-title ficha-nome">' + esc(f.nome) + '</h1>' +
     (f.teste ? '<span class="selo selo-ouro">teste</span>' : '') + '</div>' +
@@ -1781,7 +1758,7 @@ function rota() {
 function escolherUltima() {
   const reais = estado.fichas.filter(function (f) { return f.origem !== 'exemplo'; });
   const alvo = reais[0] || estado.fichas[0];
-  if (alvo) { estado.escolhida = alvo.chave; estado.evento = ''; guardarEvento(''); }
+  if (alvo) { estado.escolhida = alvo.chave; estado.dia = ''; guardarDia(''); }
 }
 
 function mostrar(trocouAba) {
@@ -1899,56 +1876,20 @@ function atualizarLista() {
   });
 }
 
-/* ---------- eventos: link da página do aluno com ?t= (mesma limpeza da página do aluno) ---------- */
-const EVENTO_KEY = 'dnm_evento_filtro_v1';     // evento escolhido no seletor, lembrado na aba
-const CRIADOS_KEY = 'dnm_eventos_criados_v1';  // eventos criados nesta aba, ainda sem resposta
-function limpaTurma(t) {
-  return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 40);
-}
+/* ---------- link do aluno: sempre o mesmo ---------- */
+const DIA_KEY = 'dnm_dia_filtro_v1';   // data escolhida no seletor, lembrada na aba
 function paginaIrma(nome, consulta) {
-  const arq = location.protocol === 'file:' ? nome + '.html' : nome;   // no servidor o endereço é curto, sem .html
+  const arq = nome + '.html';   // com .html, igual ao link que o Carlos já distribuiu
   try { return new URL(arq + (consulta || ''), location.href).href; }
   catch (e) { return arq + (consulta || ''); }
 }
-function linkEvento(slug) { return paginaIrma('diagnostico-mentoria', '?t=' + encodeURIComponent(slug)); }
-function eventosCriados() {
-  try { const v = JSON.parse(sessionStorage.getItem(CRIADOS_KEY) || '[]'); return Array.isArray(v) ? v.map(limpaTurma).filter(Boolean) : []; }
-  catch (e) { return []; }
-}
-function guardarCriado(slug) {
-  const lista = eventosCriados().filter(function (x) { return x !== slug; });
-  lista.unshift(slug);
-  try { sessionStorage.setItem(CRIADOS_KEY, JSON.stringify(lista.slice(0, 20))); } catch (e) { /* segue sem guardar */ }
-}
-function guardarEvento(ev) { try { sessionStorage.setItem(EVENTO_KEY, ev); } catch (e) { /* segue sem guardar */ } }
-function eventoGuardado() { try { return sessionStorage.getItem(EVENTO_KEY) || ''; } catch (e) { return ''; } }
-
-function criarEvento() {
-  const campo = $('evento-nome'), erro = $('evento-erro');
-  const slug = limpaTurma(campo.value.trim());
-  if (!/[a-z0-9]/.test(slug)) {
-    erro.textContent = 'Escreva o nome do evento.'; erro.hidden = false;
-    campo.setAttribute('aria-invalid', 'true'); campo.focus();
-    return;
-  }
-  erro.hidden = true; campo.removeAttribute('aria-invalid');
-  guardarCriado(slug);
-  estado.linkAtual = linkEvento(slug);
-  $('evento-slug').textContent = slug;
-  $('link-txt').textContent = estado.linkAtual;
-  $('copia').hidden = true;
-  const btn = $('btn-link'); btn.textContent = 'Copiar link'; btn.removeAttribute('data-feito');
-  $('evento-pronto').hidden = false;
-  if (estado.liberado && estado.prontas) {
-    estado.evento = slug; guardarEvento(slug);
-    desenharLista(); desenharFicha();
-  }
-}
+const LINK_ALUNO = paginaIrma('diagnostico-mentoria', '?t=fop');
+function guardarDia(d) { try { sessionStorage.setItem(DIA_KEY, d); } catch (e) { /* segue sem guardar */ } }
+function diaGuardado() { try { return sessionStorage.getItem(DIA_KEY) || ''; } catch (e) { return ''; } }
 
 function copiarLink() {
   const btn = $('btn-link'), caixa = $('copia'), ta = $('copia-txt');
-  const txt = estado.linkAtual;
-  if (!txt) return;
+  const txt = LINK_ALUNO;
   const pronto = function () {
     caixa.hidden = true;
     btn.textContent = 'Link copiado';
@@ -2058,11 +1999,8 @@ document.addEventListener('keydown', function (e) {
 
 $('btn-atualizar').addEventListener('click', atualizarLista);
 $('btn-link').addEventListener('click', copiarLink);
-$('btn-criar-evento').addEventListener('click', criarEvento);
-$('evento-nome').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); criarEvento(); } });
-$('evento-nome').addEventListener('input', function () { $('evento-erro').hidden = true; this.removeAttribute('aria-invalid'); });
-$('evento').addEventListener('change', function () {
-  estado.evento = this.value; guardarEvento(estado.evento); estado.confirmar = null;
+$('dia').addEventListener('change', function () {
+  estado.dia = this.value; guardarDia(estado.dia); estado.confirmar = null;
   desenharLista(); desenharFicha();
 });
 
@@ -2075,7 +2013,9 @@ $('form-pin').addEventListener('submit', function (e) {
 
 /* ---------- início ---------- */
 function iniciar() {
-  estado.evento = eventoGuardado();
+  estado.dia = diaGuardado();
+  try { sessionStorage.removeItem('dnm_evento_filtro_v1'); sessionStorage.removeItem('dnm_eventos_criados_v1'); } catch (e) { /* nada */ }
+  $('link-txt').textContent = LINK_ALUNO;
   if (MODO === 'validacao') $('faixa').hidden = false;
   desenharPerguntas();
 
